@@ -1,116 +1,86 @@
 import { Loader } from '@googlemaps/js-api-loader';
 import { ref } from 'vue';
-import type { PlaceResult } from './usePlaceSearch';
 
-interface CustomMarker extends google.maps.marker.AdvancedMarkerElement {
-  placeId: string;
-}
-
-export const dayColors = [
-  '#FF6B6B', // 빨강
-  '#FFA94D', // 오렌지
-  '#FFD43B', // 노랑
-  '#69DB7C', // 연초록
-  '#4DABF7', // 하늘
-  '#9775FA', // 보라
-  '#FF87CA', // 핑크
-  '#A9E34B', // 연두
-  '#40C057', // 진초록
-  '#A9A9A9', // 회색
-];
-
+// ✅ 이렇게 바꿔서 테스트
 export function usePlanMap() {
-  const markers = ref<CustomMarker[]>([]);
+  const markers = ref<google.maps.marker.AdvancedMarkerElement[]>([]);
   const loader = new Loader({
     apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     version: 'weekly',
   });
 
-  let map: google.maps.Map | null = null;
-  let infoWindow: google.maps.InfoWindow;
+  // const places = [
+  //   { name: '마커 1', lat: 37.501274, lng: 127.039585 },
+  //   { name: '마커 2', lat: 37.502, lng: 127.039 },
+  //   { name: '마커 3', lat: 37.504, lng: 127.043 },
+  //   { name: '마커 4', lat: 37.506, lng: 127.041 },
+  //   { name: '마커 5', lat: 37.508, lng: 127.045 },
+  // ];
 
-  const searchClickMarker = ref<google.maps.marker.AdvancedMarkerElement | null>(null);
-  let AdvancedMarkerElement: typeof google.maps.marker.AdvancedMarkerElement;
-  let PinElement: typeof google.maps.marker.PinElement;
+  let map: google.maps.Map | null = null;
 
   const initMap = async () => {
     const { Map: GoogleMap } = (await loader.importLibrary('maps')) as google.maps.MapsLibrary;
-    const markerLib = (await loader.importLibrary('marker')) as google.maps.MarkerLibrary;
-    AdvancedMarkerElement = markerLib.AdvancedMarkerElement;
-    PinElement = markerLib.PinElement;
+    // const { AdvancedMarkerElement, PinElement } = (await loader.importLibrary(
+    //   'marker'
+    // )) as google.maps.MarkerLibrary;
 
     map = new GoogleMap(document.getElementById('map') as HTMLElement, {
       center: { lat: 37.501274, lng: 127.039585 },
-      zoom: 10,
+      zoom: 15,
       mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID,
     });
 
-    infoWindow = new google.maps.InfoWindow();
+    // const infoWindow = new google.maps.InfoWindow();
 
+    // places.forEach((place, i) => {
+    //   const pin = new PinElement({
+    //     glyph: `${i + 1}`,
+    //     background: '#3189C6',
+    //     borderColor: '#ffffff',
+    //     glyphColor: '#ffffff',
+    //   });
+
+    //   const marker = new AdvancedMarkerElement({
+    //     position: { lat: place.lat, lng: place.lng },
+    //     map,
+    //     title: place.name,
+    //     content: pin.element,
+    //     gmpClickable: true,
+    //   });
+
+    //   // InfoWindow 이벤트 연결
+    //   marker.addListener('gmp-click', () => {
+    //     infoWindow.close();
+    //     infoWindow.setContent(`<strong>${place.name}</strong>`);
+    //     infoWindow.open(map, marker as unknown as google.maps.MVCObject);
+    //   });
+    // });
     return map;
   };
 
-  async function addMarkerForDay(day: number, place: PlaceResult, order: number) {
+  async function addMarker({
+    position,
+    label,
+  }: {
+    position: google.maps.LatLng | google.maps.LatLngLiteral;
+    label?: string;
+  }) {
     const { AdvancedMarkerElement, PinElement } = (await google.maps.importLibrary(
       'marker'
     )) as google.maps.MarkerLibrary;
 
-    // 마커 디자인 담당
     const pin = new PinElement({
-      glyph: String(order), // 1, 2, 3 등 순서
-      background: dayColors[day - 1] ?? '#888',
-      borderColor: '#ffffff',
-      glyphColor: '#ffffff',
+      glyph: label?.[0] ?? '',
     });
 
-    // 마커 생성
     const marker = new AdvancedMarkerElement({
       map,
-      position: place.location,
+      position,
       content: pin.element,
-      gmpClickable: true, // 추가해야 기존 마커 클릭이 됨.
-    }) as CustomMarker;
-
-    marker.placeId = place.placeId;
-    // ✅ 클릭 이벤트 추가
-    marker.addEventListener('gmp-click', () => {
-      infoWindow.close(); // 기존 창 닫기
-
-      const photoHTML = place.photoUrl
-        ? `<img src="${place.photoUrl}" alt="${place.name}" style="width:100px;height:auto;border-radius:8px;margin-bottom:6px;" />`
-        : '';
-
-      infoWindow.setContent(`
-        <div style="font-size:14px;max-width:200px;">
-          ${photoHTML}
-          <strong>${place.name}</strong><br />
-          ${place.address}
-        </div>
-      `);
-
-      // 사진 위 공백 버그 해결
-      google.maps.event.addListener(infoWindow, 'domready', () => {
-        const closeBtn = document.querySelector('.gm-ui-hover-effect') as HTMLElement;
-        if (closeBtn) {
-          closeBtn.style.position = 'absolute';
-          closeBtn.style.top = '0';
-          closeBtn.style.right = '0';
-        }
-      });
-
-      infoWindow.open(map, marker);
-      map?.panTo(place.location); // 마커 위치로 이동
     });
 
     markers.value.push(marker);
-  }
-
-  async function removeMarkerForDay(day: number, placeId: string) {
-    const marker = markers.value.find(m => m.placeId === placeId);
-    if (marker) {
-      marker.map = null;
-      markers.value = markers.value.filter(m => m !== marker);
-    }
   }
 
   function moveToLocation(position: google.maps.LatLng | google.maps.LatLngLiteral) {
@@ -119,41 +89,10 @@ export function usePlanMap() {
     map?.setZoom(15);
   }
 
-  // 검색 결과 클릭 시 마커 표시
-  function showMarkerForSearchClick(place: PlaceResult, dayPlans: Record<number, PlaceResult[]>) {
-    if (!map) return;
-
-    const isAlreadyPlanned = Object.values(dayPlans).some(places =>
-      places.some(p => p.placeId === place.placeId)
-    );
-
-    if (isAlreadyPlanned) return;
-
-    if (!map) return;
-
-    if (searchClickMarker.value) {
-      searchClickMarker.value.map = null;
-      searchClickMarker.value = null;
-    }
-
-    const pin = new PinElement({
-      glyph: '📍',
-      background: 'var(--color-primary)',
-      borderColor: 'var(--color-gray-600)',
-    });
-
-    searchClickMarker.value = new AdvancedMarkerElement({
-      map,
-      position: place.location.toJSON(),
-      content: pin.element,
-    });
-  }
-
   return {
     initMap,
-    addMarkerForDay,
-    removeMarkerForDay,
+    // moveToPlace,
+    addMarker,
     moveToLocation,
-    showMarkerForSearchClick,
   };
 }

@@ -1,7 +1,6 @@
 import { ref } from 'vue';
 
 export type PlaceResult = {
-  placeId: string;
   name: string;
   address: string;
   photoUrl?: string;
@@ -28,7 +27,6 @@ export function usePlaceSearch() {
 
       const response = await Place.searchByText(request);
       places.value = (response?.places || []).map(p => ({
-        placeId: p.id ?? '',
         name: p.displayName ?? '',
         address: p.formattedAddress ?? '',
         photoUrl: p.photos?.[0]?.getURI?.() ?? '',

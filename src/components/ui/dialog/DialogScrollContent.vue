@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
-import { reactiveOmit } from '@vueuse/core'
+import { cn } from '@/lib/shadcn/utils'
 import { X } from 'lucide-vue-next'
 import {
   DialogClose,
@@ -11,12 +10,16 @@ import {
   DialogPortal,
   useForwardPropsEmits,
 } from 'reka-ui'
-import { cn } from '@/lib/shadcn/utils'
+import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<DialogContentProps & { class?: HTMLAttributes['class'] }>()
 const emits = defineEmits<DialogContentEmits>()
 
-const delegatedProps = reactiveOmit(props, 'class')
+const delegatedProps = computed(() => {
+  const { class: _, ...delegated } = props
+
+  return delegated
+})
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
